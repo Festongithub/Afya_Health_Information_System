@@ -57,7 +57,7 @@ def search_clients():
         "age": c.age,
         "gender": c.gender
     } for c in clients]), 200
-
+    
 
 @app.route('/api/clients/<client_id>', methods=['GET'])
 def get_client_profile(client_id):
