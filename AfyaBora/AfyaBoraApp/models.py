@@ -4,6 +4,7 @@ import sqlalchemy.orm as so
 from uuid import uuid4
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
 
 from AfyaBoraApp import db
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -51,7 +52,9 @@ class Doctor(db.Model):
     def __repr__(self):
         return f'<Doctor {self.doctorname}>'
 
-class Client(db.Model):
+
+
+class Client(UserMixin, db.Model):
     __tablename__ = 'client'
 
     id: so.Mapped[str] = so.mapped_column(sa.String(36), primary_key=True, default=lambda: str(uuid4()))
@@ -78,3 +81,54 @@ class Client(db.Model):
     
     def __repr__(self):
         return f'<User {self.clientname}>'
+    
+    @login.user_loader
+    def load_client(id):
+        return db.session.get(Client, int(id))
+
+
+# Health Management System
+class HealthSystem:
+    @staticmethod
+    def build_program(name, description):
+        if not name or len(name.strip()) == 0:
+            raise ValueError("Program name cannot be empty")
+
+        program = HealthProgram(name=name.strip(), description=description)
+        db.session.add(program)
+        db.session.commit()
+        logging.info(f"Program created: {name}")
+        return program
+
+    @staticmethod
+    def client_register(name, age, gender):
+        if not name or age < 0:
+            raise ValueError("Invalid client details")
+        client = Client(name=name.strip(), age=age, gender=gender)
+        db.session.add(client)
+        db.session.commit()
+        logging.info(f"client registered: {name}")
+        return client
+
+    @staticmethod
+    def client_enrollment(client_id, program_id):
+        client = Client.query.get(client_id)
+        program = HealthProgram.query.get(program_id)
+        if not client or not program:
+            raise ValueError("Client or program not found")
+        if program not in client.enrolled_programs:
+            client.enrolled_programs.append(program)
+            db.session.commit()
+            logging.info(f"Client {client.name} enrolled in {program.name}")
+        return client
+
+    @staticmethod
+    def search_clients(query):
+        return Client.query.filter(Client.name.ilike(f"%{query}%")).all()
+
+    @staticmethod
+    def get_client_profile(client_id):
+        client = Client.query.get(client_id)
+        if not client:
+            raise ValueError("Client not found")
+        return client
